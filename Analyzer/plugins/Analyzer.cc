@@ -30,6 +30,7 @@
 #include "FWCore/Utilities/interface/InputTag.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
+#include "DataFormats/TrackReco/interface/DeDxData.h"
 
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 
@@ -50,6 +51,7 @@
 // from  edm::one::EDAnalyzer<>
 // This will improve performance in multithreaded jobs.
 
+using namespace reco;
 using reco::TrackCollection;
 
 class Analyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
@@ -67,6 +69,7 @@ private:
   // ----------member data ---------------------------
   edm::EDGetTokenT<TrackCollection> tracksToken_;
   edm::EDGetTokenT<pat::PackedCandidateCollection> pfToken_;
+  edm::EDGetTokenT<DeDxDataValueMap> DeDxDataToken_;
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
   edm::ESGetToken<SetupData, SetupRecord> setupToken_;
 #endif
@@ -96,6 +99,7 @@ private:
 Analyzer::Analyzer(const edm::ParameterSet& iConfig) :
 	tracksToken_(consumes<TrackCollection>(iConfig.getUntrackedParameter<edm::InputTag>("tracks"))),
     pfToken_(consumes<pat::PackedCandidateCollection>(iConfig.getUntrackedParameter<edm::InputTag>("pfCands"))),
+    DeDxDataToken_(consumes<DeDxDataValueMap>(iConfig.getUntrackedParameter<edm::InputTag>("DeDxData"))),
     applyFilt_( iConfig.getParameter<bool>("applyFilt") )
 {
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
@@ -133,18 +137,30 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
   ev_.lumi = iEvent.luminosityBlock();
   ev_.event   = iEvent.id().event();
   
+  // Get dE/dx collection
+  Handle<DeDxDataValueMap> dEdxTrackHandle;
+  iEvent.getByToken(DeDxDataToken_, dEdxTrackHandle);
+  DeDxDataValueMap dEdxTrack = *dEdxTrackHandle.product();
+  
   //PF candidates
-  edm::Handle<pat::PackedCandidateCollection> pfcands;
-  iEvent.getByToken(pfToken_,pfcands);
+  Handle<pat::PackedCandidateCollection> pfcandHandle;
+  iEvent.getByToken(pfToken_,pfcandHandle);
+  pat::PackedCandidateCollection pfcands = *pfcandHandle.product();
   
   ev_.ntrk = 0;
-  for(auto pf = pfcands->begin();  pf != pfcands->end(); ++pf){
-    if(pf->charge()==0) continue;
-	ev_.trk_p[ev_.ntrk] = pf->p() ;
-	ev_.trk_pt[ev_.ntrk] = pf->pt() ;
-	ev_.trk_eta[ev_.ntrk] = pf->eta() ;
-	ev_.trk_phi[ev_.ntrk] = pf->phi() ;
-	ev_.trk_q[ev_.ntrk] = pf->charge() ;
+  for(unsigned int i=0; i<pfcands.size(); i++){
+	
+	auto pf_ref  = Ref<pat:: PackedCandidateCollection>( pfcandHandle, i );
+	
+    if(pf_ref->charge()==0) continue;
+	
+	ev_.trk_p[ev_.ntrk] = pf_ref->p() ;
+	ev_.trk_pt[ev_.ntrk] = pf_ref->pt() ;
+	ev_.trk_eta[ev_.ntrk] = pf_ref->eta() ;
+	ev_.trk_phi[ev_.ntrk] = pf_ref->phi() ;
+	ev_.trk_q[ev_.ntrk] = pf_ref->charge() ;
+	
+	ev_.trk_dedx[ev_.ntrk] = dEdxTrack[pf_ref].dEdx();
 	
 	// det dE/dX from the track:
 	
