@@ -1,0 +1,14 @@
+<use name="FWCore/Framework"/>
+<use name="FWCore/ParameterSet"/>
+<use name="FWCore/PluginManager"/>
+<use name="FWCore/ServiceRegistry"/>
+<use name="FWCore/Common"/>
+
+<use name="CommonTools/UtilAlgos"/>
+
+<use name="DataFormats/TrackReco"/>
+<use name="pOAnalysis/Analyzer"/>
+
+<use name="root"/>
+
+<flags EDM_PLUGIN="1"/>
