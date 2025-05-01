@@ -26,6 +26,10 @@ struct MiniEvent_t
   Int_t trk_q[MAXTRACKS], trk_isPi[MAXTRACKS], trk_isK[MAXTRACKS], trk_isP[MAXTRACKS];
   Float_t trk_p[MAXTRACKS], trk_pt[MAXTRACKS], trk_eta[MAXTRACKS], trk_phi[MAXTRACKS], trk_dedx[MAXTRACKS], trk_dedxerr[MAXTRACKS];
   Float_t trk_dxy[MAXTRACKS], trk_dz[MAXTRACKS];
+  
+  // Gen info
+  Int_t typevt;
+  
 };
 
 void createMiniEventTree(TTree *t,MiniEvent_t &ev);

@@ -28,14 +28,14 @@ Analysis are performed in two steps
    
 ### Processing the data
 
-To process a single data file (stored in `/eos/cms/store/group/phys_heavyions/mpitt/pO_miniAOD`) run the following command:
+To process a single data file (stored in `/eos/cms/store/group/phys_heavyions/mpitt/Run3_2025_OXY/pO_UPC_miniAOD/`) run the following command:
 ```
 cmsRun $CMSSW_BASE/src/pOAnalysis/Analyzer/python/ConfFile_cfg.py inputFiles=file:$FILENAME applyFilt=True
 ```
 You can set `applyFilt=False` of no event pre-selection should be applied (usually used to debug). The _FILENAME_ argument can be any file from the EOS folder. For example:
 
 ```
-FILENAME=/eos/cms/store/group/phys_heavyions/mpitt/pO_miniAOD/MinBias_pythia_Op/miniAOD_0487.root
+FILENAME=/eos/cms/store/group/phys_heavyions/mpitt/Run3_2025_OXY/pO_UPC_miniAOD//MinBias_pythia_Op/miniAOD_0487.root
 ```
 
 ### Running ntuplizer (IN DEVELOPMENT)

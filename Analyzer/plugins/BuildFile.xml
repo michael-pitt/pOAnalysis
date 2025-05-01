@@ -8,6 +8,9 @@
 
 <use name="DataFormats/TrackReco"/>
 <use name="DataFormats/PatCandidates"/>
+
+<use name="SimDataFormats/GeneratorProducts"/>
+
 <use name="pOAnalysis/Analyzer"/>
 
 <use name="root"/>

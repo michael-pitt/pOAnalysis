@@ -37,6 +37,9 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
+#include "SimDataFormats/GeneratorProducts/interface/LHEEventProduct.h"
+#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+
 #include "TTree.h"
 #include "TH1.h"
 
@@ -70,6 +73,8 @@ private:
   edm::EDGetTokenT<TrackCollection> tracksToken_;
   edm::EDGetTokenT<pat::PackedCandidateCollection> pfToken_;
   edm::EDGetTokenT<DeDxDataValueMap> DeDxDataToken_;
+  edm::EDGetTokenT<GenEventInfoProduct> generatorToken_;
+  edm::EDGetTokenT<LHEEventProduct> generatorlheToken_;
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
   edm::ESGetToken<SetupData, SetupRecord> setupToken_;
 #endif
@@ -100,6 +105,8 @@ Analyzer::Analyzer(const edm::ParameterSet& iConfig) :
 	tracksToken_(consumes<TrackCollection>(iConfig.getUntrackedParameter<edm::InputTag>("tracks"))),
     pfToken_(consumes<pat::PackedCandidateCollection>(iConfig.getUntrackedParameter<edm::InputTag>("pfCands"))),
     DeDxDataToken_(consumes<DeDxDataValueMap>(iConfig.getUntrackedParameter<edm::InputTag>("DeDxData"))),
+	generatorToken_(consumes<GenEventInfoProduct>(edm::InputTag("generator"))),
+	generatorlheToken_(consumes<LHEEventProduct>(edm::InputTag("externalLHEProducer",""))),
     applyFilt_( iConfig.getParameter<bool>("applyFilt") )
 {
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
@@ -136,6 +143,20 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
   ev_.run = iEvent.id().run();
   ev_.lumi = iEvent.luminosityBlock();
   ev_.event   = iEvent.id().event();
+  
+  // GEN level
+  edm::Handle<LHEEventProduct> evet;
+  iEvent.getByToken(generatorlheToken_, evet);
+
+  edm::Handle<GenEventInfoProduct> evt;
+  iEvent.getByToken( generatorToken_,evt);
+
+  if(evet.isValid()) {
+	  ev_.typevt = evet->hepeup().IDPRUP;
+  }
+  else if (evt.isValid()){
+	  ev_.typevt = evt->signalProcessID();
+  }
   
   // Get dE/dx collection
   Handle<DeDxDataValueMap> dEdxTrackHandle;
