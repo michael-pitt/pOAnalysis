@@ -18,6 +18,8 @@ struct MiniEvent_t
   UInt_t run,lumi;
   ULong64_t event;
 
+  Float_t weight;
+  
   // Vertex info
   Int_t nvtx;
 
@@ -26,6 +28,11 @@ struct MiniEvent_t
   Int_t trk_q[MAXTRACKS], trk_isPi[MAXTRACKS], trk_isK[MAXTRACKS], trk_isP[MAXTRACKS];
   Float_t trk_p[MAXTRACKS], trk_pt[MAXTRACKS], trk_eta[MAXTRACKS], trk_phi[MAXTRACKS], trk_dedx[MAXTRACKS], trk_dedxerr[MAXTRACKS];
   Float_t trk_dxy[MAXTRACKS], trk_dz[MAXTRACKS];
+  
+  //gen track info
+  Int_t gen_ntrk;
+  Float_t gen_trk_pt[MAXGENTRACKS];
+  Int_t gen_trk_id[MAXGENTRACKS];
   
   // Gen info
   Int_t typevt;

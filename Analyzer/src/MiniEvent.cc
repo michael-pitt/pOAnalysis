@@ -11,6 +11,7 @@ void createMiniEventTree(TTree *t,MiniEvent_t &ev)
   t->Branch("lumi",      &ev.lumi,     "lumi/i");
   t->Branch("event",     &ev.event,    "event/l");
 
+  t->Branch("weight",     &ev.weight,    "weight/F");
   t->Branch("typevt",        &ev.typevt,          "typevt/I");
 
   t->Branch("ntrk",        &ev.ntrk,          "ntrk/I");
@@ -23,6 +24,11 @@ void createMiniEventTree(TTree *t,MiniEvent_t &ev)
   t->Branch("trk_q",        ev.trk_q,         "trk_q[ntrk]/I");
   t->Branch("trk_dedx",     ev.trk_dedx,      "trk_dedx[ntrk]/F");
   t->Branch("trk_dedxerr",  ev.trk_dedxerr,   "trk_dedxerr[ntrk]/F");
+
+  t->Branch("gen_ntrk",        &ev.gen_ntrk,          "gen_ntrk/I");
+  t->Branch("gen_trk_pt",        ev.gen_trk_pt,         "gen_trk_pt[gen_ntrk]/F");
+  t->Branch("gen_trk_id",       ev.gen_trk_id,        "gen_trk_id[gen_ntrk]/I");
+
 }
 
 void attachToMiniEventTree(TTree *t,MiniEvent_t &ev)
@@ -34,6 +40,7 @@ void attachToMiniEventTree(TTree *t,MiniEvent_t &ev)
   t->SetBranchAddress("event",     &ev.event);
   t->SetBranchAddress("lumi",      &ev.lumi);
 
+  t->SetBranchAddress("weight",    &ev.weight);
   t->SetBranchAddress("typevt",    &ev.typevt);
   
   t->SetBranchAddress("ntrk",        &ev.ntrk);
@@ -46,5 +53,9 @@ void attachToMiniEventTree(TTree *t,MiniEvent_t &ev)
   t->SetBranchAddress("trk_q",       ev.trk_q);
   t->SetBranchAddress("trk_dedx",    ev.trk_dedx);
   t->SetBranchAddress("trk_dedxerr", ev.trk_dedxerr);
+
+  t->SetBranchAddress("gen_ntrk",        &ev.gen_ntrk);
+  t->SetBranchAddress("gen_trk_pt", ev.gen_trk_pt);
+  t->SetBranchAddress("gen_trk_id", ev.gen_trk_id);
 }
 

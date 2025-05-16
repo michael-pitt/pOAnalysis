@@ -33,12 +33,14 @@
 #include "DataFormats/TrackReco/interface/DeDxData.h"
 
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
+#include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
 
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
 #include "SimDataFormats/GeneratorProducts/interface/LHEEventProduct.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+
 
 #include "TTree.h"
 #include "TH1.h"
@@ -75,6 +77,8 @@ private:
   edm::EDGetTokenT<DeDxDataValueMap> DeDxDataToken_;
   edm::EDGetTokenT<GenEventInfoProduct> generatorToken_;
   edm::EDGetTokenT<LHEEventProduct> generatorlheToken_;
+  edm::EDGetTokenT<pat::PackedGenParticleCollection> genParticlesToken_;
+  edm::EDGetTokenT<reco::GenParticleCollection> prunedGenParticlesToken_;
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
   edm::ESGetToken<SetupData, SetupRecord> setupToken_;
 #endif
@@ -107,6 +111,8 @@ Analyzer::Analyzer(const edm::ParameterSet& iConfig) :
     DeDxDataToken_(consumes<DeDxDataValueMap>(iConfig.getUntrackedParameter<edm::InputTag>("DeDxData"))),
 	generatorToken_(consumes<GenEventInfoProduct>(edm::InputTag("generator"))),
 	generatorlheToken_(consumes<LHEEventProduct>(edm::InputTag("externalLHEProducer",""))),
+	genParticlesToken_(consumes<pat::PackedGenParticleCollection>(edm::InputTag("packedGenParticles"))),
+	prunedGenParticlesToken_(consumes<reco::GenParticleCollection>(edm::InputTag("prunedGenParticles"))),
     applyFilt_( iConfig.getParameter<bool>("applyFilt") )
 {
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
@@ -144,6 +150,8 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
   ev_.lumi = iEvent.luminosityBlock();
   ev_.event   = iEvent.id().event();
   
+  ev_.weight = 1;
+  
   // GEN level
   edm::Handle<LHEEventProduct> evet;
   iEvent.getByToken(generatorlheToken_, evet);
@@ -153,9 +161,11 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
 
   if(evet.isValid()) {
 	  ev_.typevt = evet->hepeup().IDPRUP;
+	  ev_.weight = evet->hepeup().XWGTUP;
   }
   else if (evt.isValid()){
 	  ev_.typevt = evt->signalProcessID();
+	  ev_.weight = evt->weight();
   }
   
   // Get dE/dx collection
@@ -188,6 +198,24 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
 	ev_.ntrk++;
 	
   }
+  
+  // GEN particles:
+  ev_.gen_ntrk = 0;
+  edm::Handle<pat::PackedGenParticleCollection> genParticles;
+  iEvent.getByToken(genParticlesToken_,genParticles);
+  if(genParticles.isValid()){
+	  for (size_t i = 0; i < genParticles->size(); ++i)
+	  {
+		  const pat::PackedGenParticle & genIt = (*genParticles)[i];
+		  if(genIt.pt()<0.1) continue;
+		  if(genIt.charge()==0) continue;
+		  ev_.gen_trk_pt[ev_.gen_ntrk] = genIt.pt(); 
+		  ev_.gen_trk_id[ev_.gen_ntrk] = genIt.pdgId(); 
+		  ev_.gen_ntrk++;
+	  }
+  }
+		  
+  
 
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
   // if the SetupData is always needed

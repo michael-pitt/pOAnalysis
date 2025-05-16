@@ -35,7 +35,7 @@ cmsRun $CMSSW_BASE/src/pOAnalysis/Analyzer/python/ConfFile_cfg.py inputFiles=fil
 You can set `applyFilt=False` of no event pre-selection should be applied (usually used to debug). The _FILENAME_ argument can be any file from the EOS folder. For example:
 
 ```
-FILENAME=/eos/cms/store/group/phys_heavyions/mpitt/Run3_2025_OXY/pO_UPC_miniAOD//MinBias_pythia_Op/miniAOD_0487.root
+FILENAME=/eos/cms/store/group/phys_heavyions/mpitt/Run3_2025_OXY/pO_UPC_miniAOD/MinBias_crmcv2_2_1_eposlhcr_Op/miniAOD_0123.root
 ```
 
 ### Running ntuplizer (IN DEVELOPMENT)
