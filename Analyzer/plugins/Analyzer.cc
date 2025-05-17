@@ -41,6 +41,7 @@
 #include "SimDataFormats/GeneratorProducts/interface/LHEEventProduct.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 
+#include "DataFormats/Math/interface/deltaR.h"
 
 #include "TTree.h"
 #include "TH1.h"
@@ -72,7 +73,8 @@ private:
   void endJob() override;
 
   // ----------member data ---------------------------
-  edm::EDGetTokenT<TrackCollection> tracksToken_;
+  //edm::EDGetTokenT<TrackCollection> tracksToken_;
+  edm::EDGetTokenT<pat::PackedCandidateCollection> tracksToken_;
   edm::EDGetTokenT<pat::PackedCandidateCollection> pfToken_;
   edm::EDGetTokenT<DeDxDataValueMap> DeDxDataToken_;
   edm::EDGetTokenT<GenEventInfoProduct> generatorToken_;
@@ -106,14 +108,15 @@ private:
 // constructors and destructor
 //
 Analyzer::Analyzer(const edm::ParameterSet& iConfig) :
-	tracksToken_(consumes<TrackCollection>(iConfig.getUntrackedParameter<edm::InputTag>("tracks"))),
-    pfToken_(consumes<pat::PackedCandidateCollection>(iConfig.getUntrackedParameter<edm::InputTag>("pfCands"))),
-    DeDxDataToken_(consumes<DeDxDataValueMap>(iConfig.getUntrackedParameter<edm::InputTag>("DeDxData"))),
+	//tracksToken_(consumes<TrackCollection>(iConfig.getUntrackedParameter<edm::InputTag>("tracks"))),
+	tracksToken_(consumes<pat::PackedCandidateCollection>(iConfig.getUntrackedParameter<edm::InputTag>("tracks"))),
+        pfToken_(consumes<pat::PackedCandidateCollection>(iConfig.getUntrackedParameter<edm::InputTag>("pfCands"))),
+        DeDxDataToken_(consumes<DeDxDataValueMap>(iConfig.getUntrackedParameter<edm::InputTag>("DeDxData"))),
 	generatorToken_(consumes<GenEventInfoProduct>(edm::InputTag("generator"))),
 	generatorlheToken_(consumes<LHEEventProduct>(edm::InputTag("externalLHEProducer",""))),
 	genParticlesToken_(consumes<pat::PackedGenParticleCollection>(edm::InputTag("packedGenParticles"))),
 	prunedGenParticlesToken_(consumes<reco::GenParticleCollection>(edm::InputTag("prunedGenParticles"))),
-    applyFilt_( iConfig.getParameter<bool>("applyFilt") )
+        applyFilt_( iConfig.getParameter<bool>("applyFilt") )
 {
 #ifdef THIS_IS_AN_EVENTSETUP_EXAMPLE
   setupDataToken_ = esConsumes<SetupData, SetupRecord>();
@@ -142,6 +145,7 @@ Analyzer::~Analyzer() {
 // ------------ method called for each event  ------------
 void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
   using namespace edm;
+  std::cout<<"new event";
   
   h_counter->Fill(1,1);
   
@@ -177,41 +181,173 @@ void Analyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) 
   Handle<pat::PackedCandidateCollection> pfcandHandle;
   iEvent.getByToken(pfToken_,pfcandHandle);
   pat::PackedCandidateCollection pfcands = *pfcandHandle.product();
-  
+
+  //lostTracks 
+  Handle<pat::PackedCandidateCollection> tracksHandle;
+  iEvent.getByToken(tracksToken_,tracksHandle);
+  pat::PackedCandidateCollection tracks = *tracksHandle.product();
+
+  //genParticles
+  edm::Handle<pat::PackedGenParticleCollection> genParticles;
+  iEvent.getByToken(genParticlesToken_,genParticles);
+  const size_t n = genParticles->size();
+  if (!genParticles.isValid()) {
+    std::cerr << "Error: packedGenParticles collection is invalid" << std::endl;
+  }
+  if (genParticles->empty()) {
+    std::cerr << "Error: packedGenParticles collection is empty" << std::endl;
+  }
+ 
   ev_.ntrk = 0;
+  Float_t dRmatch = 99.; // added
+  Float_t ptmatch = 99.; // added
+  Int_t matchedPdgId = 0; // added
+  bool hasReco = false; // added 
+
+  // loop over pf candidates
   for(unsigned int i=0; i<pfcands.size(); i++){
-	
+	// only continue if a track is present
 	auto pf_ref  = Ref<pat:: PackedCandidateCollection>( pfcandHandle, i );
+        if(pf_ref->charge()==0 || !(pf_ref->hasTrackDetails())) continue;
 	
-    if(pf_ref->charge()==0) continue;
-	
+        // fill basic track info
 	ev_.trk_p[ev_.ntrk] = pf_ref->p() ;
 	ev_.trk_pt[ev_.ntrk] = pf_ref->pt() ;
 	ev_.trk_eta[ev_.ntrk] = pf_ref->eta() ;
 	ev_.trk_phi[ev_.ntrk] = pf_ref->phi() ;
 	ev_.trk_q[ev_.ntrk] = pf_ref->charge() ;
+
+        ev_.trk_dxy[ev_.ntrk] = pf_ref->dxy() ;
+        ev_.trk_dz[ev_.ntrk] = pf_ref->dz() ;
+        ev_.trk_numberOfPixelHits[ev_.ntrk] = pf_ref->numberOfPixelHits();
+        ev_.trk_numberOfHits[ev_.ntrk] = pf_ref->pseudoTrack().hitPattern().numberOfValidHits();
 	
 	ev_.trk_dedx[ev_.ntrk] = dEdxTrack[pf_ref].dEdx();
-	
-	// det dE/dX from the track:
-	
+
+        //now look for gen matching information
+        dRmatch = 99.;
+        ptmatch = 99.;
+        // loop over gen particles
+        for (size_t q = 0; q < n; ++q) {
+            const auto &p = (*genParticles)[q];
+            if (p.status() != 1) continue;
+              // if particle is close
+              if (deltaR(p, *pf_ref) < dRmatch){
+                  // if dRmatch is already below a certain value, we should decide based on pt agreement as well
+                  if (dRmatch<0.1){
+                    if ( deltaR(p, *pf_ref) + 0.5*std::abs(pf_ref->pt() - p.pt()) < dRmatch + 0.5*std::abs(ptmatch-pf_ref->pt()) ){
+                      dRmatch=deltaR(p, *pf_ref);
+                      matchedPdgId=p.pdgId();
+                      ptmatch=p.pt();
+                    }
+                  }
+                  // else just fill
+                  else{
+                    dRmatch=deltaR(p, *pf_ref);
+                    matchedPdgId=p.pdgId();
+                    ptmatch=p.pt();
+                  }
+                }
+            }
+        // fill gen matching info
+        ev_.trk_matchedPdgId[ev_.ntrk] = matchedPdgId;
+        ev_.trk_dRmatch[ev_.ntrk] = dRmatch;
+        ev_.trk_genPt[ev_.ntrk] = ptmatch;	
 	ev_.ntrk++;
 	
   }
-  
-  // GEN particles:
+
+
+  // do the same for the losttracks collection
+  for(unsigned int h=0; h<tracks.size(); h++){
+      auto pf_ref2  = Ref<pat::PackedCandidateCollection>( tracksHandle, h );
+        // fill basic track info
+        ev_.trk_p[ev_.ntrk] = pf_ref2->p() ;
+        ev_.trk_pt[ev_.ntrk] = pf_ref2->pt() ;
+        ev_.trk_eta[ev_.ntrk] = pf_ref2->eta() ;
+        ev_.trk_phi[ev_.ntrk] = pf_ref2->phi() ;
+        ev_.trk_q[ev_.ntrk] = pf_ref2->charge() ;
+
+        ev_.trk_dxy[ev_.ntrk] = pf_ref2->dxy() ;
+        ev_.trk_dz[ev_.ntrk] = pf_ref2->dz() ;
+        ev_.trk_numberOfPixelHits[ev_.ntrk] = pf_ref2->numberOfPixelHits();
+        ev_.trk_numberOfHits[ev_.ntrk] = pf_ref2->pseudoTrack().hitPattern().numberOfValidHits();
+
+        ev_.trk_dedx[ev_.ntrk] = dEdxTrack[pf_ref2].dEdx();
+
+        //now look for gen matching information
+        dRmatch = 99.;
+        ptmatch = 99.;
+        // loop over gen particles
+        for (size_t q = 0; q < n; ++q) {
+            const auto &p = (*genParticles)[q];
+            if (p.status() != 1) continue;
+              // if particle is close
+              if (deltaR(p, *pf_ref2) < dRmatch){
+                  // if dRmatch is already below a certain value, we should decide based on pt agreement as well
+                  if (dRmatch<0.1){
+                    if ( deltaR(p, *pf_ref2) + 0.5*std::abs(pf_ref2->pt() - p.pt()) < dRmatch + 0.5*std::abs(ptmatch-pf_ref2->pt()) ){
+                      dRmatch=deltaR(p, *pf_ref2);
+                      matchedPdgId=p.pdgId();
+                      ptmatch=p.pt();
+                    }
+                  }
+                  // else just fill
+                  else{
+                    dRmatch=deltaR(p, *pf_ref2);
+                    matchedPdgId=p.pdgId();
+                    ptmatch=p.pt();
+                  }
+                }
+             }
+        // fill gen matching info
+        ev_.trk_matchedPdgId[ev_.ntrk] = matchedPdgId;
+        ev_.trk_dRmatch[ev_.ntrk] = dRmatch;
+        ev_.trk_genPt[ev_.ntrk] = ptmatch;
+        ev_.ntrk++;
+
+  }
+
+  // GEN particles: general info and tracking efficiency info
   ev_.gen_ntrk = 0;
-  edm::Handle<pat::PackedGenParticleCollection> genParticles;
-  iEvent.getByToken(genParticlesToken_,genParticles);
+
   if(genParticles.isValid()){
-	  for (size_t i = 0; i < genParticles->size(); ++i)
-	  {
-		  const pat::PackedGenParticle & genIt = (*genParticles)[i];
-		  if(genIt.pt()<0.1) continue;
-		  if(genIt.charge()==0) continue;
-		  ev_.gen_trk_pt[ev_.gen_ntrk] = genIt.pt(); 
-		  ev_.gen_trk_id[ev_.gen_ntrk] = genIt.pdgId(); 
-		  ev_.gen_ntrk++;
+      for (size_t i = 0; i < genParticles->size(); ++i){
+	  auto const& p = genParticles->at(i);
+
+	  if(p.charge()==0) continue;
+          if (p.status() != 1) continue;
+
+          // write gen info
+	  ev_.gen_trk_pt[ev_.gen_ntrk] = p.pt();
+          ev_.gen_trk_eta[ev_.gen_ntrk] = p.eta();
+	  ev_.gen_trk_id[ev_.gen_ntrk] = p.pdgId(); 
+
+          hasReco = false;
+          // check if track matches
+          for(unsigned int h=0; h<tracks.size(); h++){
+                auto pf_ref2  = Ref<pat::PackedCandidateCollection>( tracksHandle, h );
+                if(pf_ref2->charge()==0 || !(pf_ref2->hasTrackDetails()) ) continue;
+                if (deltaR(p, *pf_ref2) < 0.1 && std::abs(pf_ref2->pt() - p.pt()) < 0.5){
+                        hasReco = true;
+                        continue; 
+                        }      
+                }
+          if (hasReco==false){
+          for(unsigned int h=0; h<pfcands.size(); h++){
+                auto pf_ref3  = Ref<pat::PackedCandidateCollection>( pfcandHandle, h );
+                if(pf_ref3->charge()==0 || !(pf_ref3->hasTrackDetails()) ) continue;
+
+                if (deltaR(p, *pf_ref3) < 0.1 && std::abs(pf_ref3->pt() - p.pt()) < 0.5){
+                        hasReco = true;
+                        continue;
+                        }
+                }
+          }
+          if (hasReco){ ev_.gen_trk_hasReco[ev_.gen_ntrk] = 1;}
+          else{ ev_.gen_trk_hasReco[ev_.gen_ntrk] = 0;}
+
+	  ev_.gen_ntrk++;
 	  }
   }
 		  

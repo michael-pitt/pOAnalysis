@@ -25,9 +25,17 @@ void createMiniEventTree(TTree *t,MiniEvent_t &ev)
   t->Branch("trk_dedx",     ev.trk_dedx,      "trk_dedx[ntrk]/F");
   t->Branch("trk_dedxerr",  ev.trk_dedxerr,   "trk_dedxerr[ntrk]/F");
 
+  t->Branch("trk_genPt",       ev.trk_genPt,        "trk_genPt[ntrk]/F");
+  t->Branch("trk_dRmatch",       ev.trk_dRmatch,    "trk_dRmatch[ntrk]/F");
+  t->Branch("trk_matchedPdgId",  ev.trk_matchedPdgId,  "trk_matchedPdgId[ntrk]/F");
+  t->Branch("trk_numberOfPixelHits",  ev.trk_numberOfPixelHits,  "trk_numberOfPixelHits[ntrk]/I");
+  t->Branch("trk_numberOfHits",  ev.trk_numberOfHits,  "trk_numberOfHits[ntrk]/I");
+
   t->Branch("gen_ntrk",        &ev.gen_ntrk,          "gen_ntrk/I");
   t->Branch("gen_trk_pt",        ev.gen_trk_pt,         "gen_trk_pt[gen_ntrk]/F");
   t->Branch("gen_trk_id",       ev.gen_trk_id,        "gen_trk_id[gen_ntrk]/I");
+  t->Branch("gen_trk_eta",      ev.gen_trk_eta,       "gen_trk_eta[gen_ntrk]/F");
+  t->Branch("gen_trk_hasReco",    ev.gen_trk_hasReco,     "gen_trk_hasReco[gen_ntrk]/I");
 
 }
 
@@ -54,8 +62,16 @@ void attachToMiniEventTree(TTree *t,MiniEvent_t &ev)
   t->SetBranchAddress("trk_dedx",    ev.trk_dedx);
   t->SetBranchAddress("trk_dedxerr", ev.trk_dedxerr);
 
+  t->SetBranchAddress("trk_genPt",      ev.trk_genPt);
+  t->SetBranchAddress("trk_dRmatch",      ev.trk_dRmatch);
+  t->SetBranchAddress("trk_matchedPdgId",      ev.trk_matchedPdgId);
+  t->SetBranchAddress("trk_numberOfPixelHits",      ev.trk_numberOfPixelHits);
+  t->SetBranchAddress("trk_numberOfHits",      ev.trk_numberOfHits);
+
   t->SetBranchAddress("gen_ntrk",        &ev.gen_ntrk);
   t->SetBranchAddress("gen_trk_pt", ev.gen_trk_pt);
+  t->SetBranchAddress("gen_trk_eta",     ev.gen_trk_eta);
+  t->SetBranchAddress("gen_trk_hasReco",        &ev.gen_trk_hasReco);
   t->SetBranchAddress("gen_trk_id", ev.gen_trk_id);
 }
 
