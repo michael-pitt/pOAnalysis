@@ -54,13 +54,13 @@ process.TFileService = cms.Service("TFileService",
 					)
 					
 process.analysis = cms.EDAnalyzer('Analyzer',
-       tracks = cms.untracked.InputTag('tracks'),
+       tracks = cms.untracked.InputTag('lostTracks'),
        pfCands = cms.untracked.InputTag('packedPFCandidates'),
        DeDxData = cms.untracked.InputTag('dedxEstimator','dedxAllLikelihood'),
 #       vertices = cms.InputTag('offlinePrimaryVertices'),	 
 #       vertices = cms.InputTag('offlinePrimaryVerticesWithBS'),	 
 #       rpTrackTag = cms.InputTag('ctppsLocalTrackLiteProducer'),
-#       genParticles = cms.InputTag('genParticles'),
+       genParticles = cms.InputTag('genParticles'),
        applyFilt = cms.bool(options.applyFilt),
 )
 
